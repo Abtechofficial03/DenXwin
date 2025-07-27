@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Profile - DenXWin</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+</head>
+<body>
+  <h1>👤 User Profile</h1>
+
+  <p><strong>Name:</strong> <span id="name">Loading...</span></p>
+  <p><strong>Email:</strong> <span id="email">Loading...</span></p>
+  <p><strong>Joined:</strong> <span id="joined">Loading...</span></p>
+  <p><strong>User ID:</strong> <span id="uid">Loading...</span></p>
+
+  <button onclick="window.location.href='/home'">🏠 Home</button>
+  <button onclick="logout()">🚪 Logout</button>
+
+  <script>
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        const uid = user.uid;
+        document.getElementById("email").innerText = user.email;
+        document.getElementById("uid").innerText = uid;
+
+        db.collection("users").doc(uid).get().then(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            document.getElementById("name").innerText = data.name || "-";
+            document.getElementById("joined").innerText = new Date(data.joined).toLocaleDateString();
+          }
+        });
+      } else {
+        window.location.href = "/login";
+      }
+    });
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = "/login";
+      });
+    }
+  </script>
+</body>
+</html>

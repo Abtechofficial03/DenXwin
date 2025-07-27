@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Wallet - DenXWin</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>💼 Wallet</h1>
+
+  <p><strong>Available Balance:</strong> ₹<span id="balance">0.00</span></p>
+
+  <button onclick="window.location.href='addcash.html'">➕ Add Cash</button>
+  <button onclick="window.location.href='withdraw.html'">💸 Withdraw</button>
+  <button onclick="window.location.href='homehtml'">🏠 Home</button>
+  <hr>
+
+  <h3>Transaction History</h3>
+  <ul id="txnList"></ul>
+
+  <script>
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        const uid = user.uid;
+
+        // Fetch balance
+        db.collection("users").doc(uid).get().then(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            document.getElementById("balance").innerText = data.balance.toFixed(2);
+          }
+        });
+
+        // Fetch transactions
+        db.collection("transactions")
+          .where("uid", "==", uid)
+          .orderBy("timestamp", "desc")
+          .limit(20)
+          .get()
+          .then(snapshot => {
+            const txnList = document.getElementById("txnList");
+            txnList.innerHTML = "";
+            snapshot.forEach(doc => {
+              const txn = doc.data();
+              const li = document.createElement("li");
+              li.innerText = `${txn.type.toUpperCase()} ₹${txn.amount} (${new Date(txn.timestamp).toLocaleString()})`;
+              txnList.appendChild(li);
+            });
+          });
+
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+  </script>
+</body>
+</html>

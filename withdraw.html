@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Withdraw - DenXWin</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@2/dist/email.min.js"></script>
+  <script src="firebase-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>💸 Withdraw Funds</h2>
+
+  <input type="text" id="upi" placeholder="Enter UPI ID"><br><br>
+  <input type="number" id="amount" placeholder="Amount (₹)" min="1"><br><br>
+  <button onclick="requestWithdraw()">Withdraw</button>
+
+  <p id="msg" style="color:green"></p>
+  <button onclick="window.location.href='wallet.html'">💼 Back to Wallet</button>
+
+  <script>
+    emailjs.init("jOpopQDVa4EqjgHX");
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) {
+        window.location.href = "login.html";
+      }
+    });
+
+    async function requestWithdraw() {
+      const upi = document.getElementById("upi").value.trim();
+      const amount = parseFloat(document.getElementById("amount").value);
+
+      if (!upi || !amount || amount < 1) {
+        alert("Enter valid UPI and amount");
+        return;
+      }
+
+      const user = firebase.auth().currentUser;
+      const uid = user.uid;
+      const userRef = db.collection("users").doc(uid);
+      const doc = await userRef.get();
+
+      if (!doc.exists) return;
+
+      const balance = doc.data().balance || 0;
+      const afterCharge = amount + amount * 0.05;
+
+      if (balance < afterCharge) {
+        alert("Insufficient balance. (5% fee added)");
+        return;
+      }
+
+      const finalAmount = amount;
+      const commission = amount * 0.05;
+
+      // Deduct from balance
+      await userRef.update({ balance: balance - (finalAmount + commission) });
+
+      // Log in Firestore
+      await db.collection("withdrawals").add({
+        uid: uid,
+        name: doc.data().name,
+        email: user.email,
+        upi: upi,
+        amount: finalAmount,
+        commission: commission,
+        status: "pending",
+        timestamp: Date.now()
+      });
+
+      // Add to transactions
+      await db.collection("transactions").add({
+        uid: uid,
+        amount: finalAmount,
+        type: "debit",
+        source: "withdraw",
+        timestamp: Date.now()
+      });
+
+      // Send EmailJS notification
+      emailjs.send("service_22ksz46", "template_d2layz8", {
+        user_name: doc.data().name,
+        amount: finalAmount,
+        email: user.email
+      }).then(() => {
+        document.getElementById("msg").innerText = "✅ Withdraw requested successfully!";
+      }).catch(err => {
+        console.log("Email Error:", err);
+      });
+    }
+  </script>
+</body>
+</html>

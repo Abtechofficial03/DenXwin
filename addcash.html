@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Cash - DenXWin</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>➕ Add Cash</h2>
+
+  <input type="number" id="amount" placeholder="Enter amount (₹)" min="1"><br><br>
+  <button onclick="addCash()">Add Cash</button><br><br>
+  <p id="status"></p>
+  <button onclick="window.location.href='wallet.html'">💼 Back to Wallet</button>
+
+  <script>
+    const db = firebase.firestore();
+    let currentUser;
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) window.location.href = "login.html";
+      else currentUser = user;
+    });
+
+    function addCash() {
+      const amount = parseInt(document.getElementById("amount").value);
+      if (!amount || amount < 1) {
+        alert("Enter valid amount");
+        return;
+      }
+
+      fetch("/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount })
+      })
+      .then(res => res.json())
+      .then(order => {
+        const options = {
+          key: "rzp_test_kBKFbbuPBtup5u", // Razorpay Test Key
+          amount: order.amount,
+          currency: "INR",
+          name: "DenXWin",
+          description: "Add to wallet",
+          order_id: order.id,
+          handler: function (response) {
+            // On success, update balance in Firestore
+            const uid = currentUser.uid;
+            const userRef = db.collection("users").doc(uid);
+            userRef.get().then(doc => {
+              const current = doc.data().balance || 0;
+              const final = current + amount - (amount * 0.05); // 5% commission
+              userRef.update({ balance: final });
+
+              db.collection("transactions").add({
+                uid: uid,
+                amount: amount,
+                type: "credit",
+                source: "addcash",
+                timestamp: Date.now()
+              });
+
+              document.getElementById("status").innerText = "✅ ₹" + amount + " added successfully!";
+            });
+          },
+          prefill: {
+            email: currentUser.email,
+            name: currentUser.displayName || "DenXWin User"
+          },
+          theme: { color: "#3399cc" }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      });
+    }
+  </script>
+</body>
+</html>

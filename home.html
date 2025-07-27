@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DenXWin - Home</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Welcome to DenXWin</h1>
+  <p id="userEmail">Loading user...</p>
+  <p><strong>Wallet Balance:</strong> ₹<span id="balance">0.00</span></p>
+
+  <button onclick="goToPage('/spin')">🎯 Play Spin</button>
+  <button onclick="goToPage('/wallet')">💼 Wallet</button>
+  <button onclick="goToPage('/addcash')">➕ Add Cash</button>
+  <button onclick="goToPage('/withdraw')">💸 Withdraw</button>
+  <button onclick="goToPage('/notifications')">🔔 Notifications</button>
+  <button onclick="goToPage('/profile')">👤 Profile</button>
+  <button onclick="goToPage('/settings')">⚙️ Settings</button>
+  <br><br>
+  <button onclick="logout()">🚪 Logout</button>
+
+  <script>
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById("userEmail").innerText = "Hi, " + user.email;
+
+        db.collection("users").doc(user.uid).get().then(doc => {
+          if (doc.exists) {
+            document.getElementById("balance").innerText = doc.data().balance.toFixed(2);
+          } else {
+            document.getElementById("balance").innerText = "0.00";
+          }
+        });
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    function logout() {
+      firebase.auth().signOut().then(() => {
+        window.location.href = "login.html";
+      });
+    }
+
+    function goToPage(page) {
+      window.location.href = page;
+    }
+  </script>
+</body>
+</html>

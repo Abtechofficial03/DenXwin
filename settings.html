@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings - DenXWin</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>⚙️ Account Settings</h2>
+
+  <div>
+    <h4>Change Display Name</h4>
+    <input type="text" id="newName" placeholder="New Name">
+    <button onclick="updateName()">Update</button>
+  </div>
+
+  <br>
+
+  <div>
+    <h4>Change Password</h4>
+    <input type="password" id="newPass" placeholder="New Password (min 6 chars)">
+    <button onclick="updatePassword()">Update</button>
+  </div>
+
+  <br>
+
+  <button onclick="firebase.auth().signOut().then(() => window.location.href='login.html')">🚪 Logout</button>
+  <button onclick="window.location.href='home.html'">🏠 Back to Home</button>
+
+  <br><br>
+  <!-- Theme toggle -->
+  <button class="theme-toggle" onclick="toggleTheme()">🌗 Toggle Theme</button>
+
+  <p id="msg" style="color:green;"></p>
+
+  <script>
+    const db = firebase.firestore();
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user) window.location.href = "login.html";
+    });
+
+    function updateName() {
+      const newName = document.getElementById("newName").value.trim();
+      const user = firebase.auth().currentUser;
+      if (!newName) return alert("Enter a valid name");
+
+      db.collection("users").doc(user.uid).update({
+        name: newName
+      }).then(() => {
+        document.getElementById("msg").innerText = "✅ Name updated!";
+      }).catch(err => {
+        alert("Error: " + err.message);
+      });
+    }
+
+    function updatePassword() {
+      const newPass = document.getElementById("newPass").value;
+      if (newPass.length < 6) return alert("Password must be at least 6 characters");
+
+      const user = firebase.auth().currentUser;
+      user.updatePassword(newPass)
+        .then(() => {
+          document.getElementById("msg").innerText = "✅ Password updated!";
+        })
+        .catch(err => {
+          alert("Error: " + err.message);
+        });
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.style.backgroundColor === "black" || document.body.style.backgroundColor === "";
+
+      if (isDark) {
+        document.body.style.backgroundColor = "var(--bg-light)";
+        document.body.style.color = "var(--text-light)";
+        document.querySelectorAll("button").forEach(btn => btn.style.backgroundColor = "var(--primary-light)");
+        document.querySelectorAll("input").forEach(input => input.style.backgroundColor = "#f0f0f0");
+      } else {
+        document.body.style.backgroundColor = "var(--bg-dark)";
+        document.body.style.color = "var(--text-dark)";
+        document.querySelectorAll("button").forEach(btn => btn.style.backgroundColor = "var(--primary-dark)");
+        document.querySelectorAll("input").forEach(input => input.style.backgroundColor = "#222");
+      }
+    }
+  </script>
+</body>
+</html>

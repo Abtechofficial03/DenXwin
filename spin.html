@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Spin & Win - DenXWin</title>
+  <style>
+    #wheel {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      border: 10px solid #444;
+      position: relative;
+      margin: auto;
+      transform: rotate(0deg);
+      transition: transform 5s ease-out;
+    }
+
+    .slice {
+      width: 50%;
+      height: 50%;
+      position: absolute;
+      transform-origin: 100% 100%;
+      clip-path: polygon(100% 100%, 0% 100%, 100% 0%);
+    }
+
+    #spinBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 18px;
+    }
+
+    #result {
+      font-size: 20px;
+      margin-top: 10px;
+      color: green;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h2>🎡 DenXWin - Spin & Win</h2>
+  <div id="wheel"></div>
+  <button id="spinBtn" onclick="spin()">SPIN</button>
+  <p id="result"></p>
+  <button onclick="window.location.href='home.html'">🏠 Home</button>
+
+  <audio id="spinSound" src="https://www.soundjay.com/button/beep-07.wav"></audio>
+
+  <script>
+    const db = firebase.firestore();
+    const rewards = [0.10, 0.20, 0.30, 0.50, 0.75, 1.00];
+    const colors = ['#f44336','#e91e63','#9c27b0','#3f51b5','#009688','#4caf50'];
+
+    const wheel = document.getElementById("wheel");
+    const spinSound = document.getElementById("spinSound");
+
+    let angle = 0;
+
+    // Create slices
+    function createWheel() {
+      for (let i = 0; i < rewards.length; i++) {
+        const slice = document.createElement("div");
+        slice.className = "slice";
+        slice.style.background = colors[i];
+        slice.style.transform = `rotate(${i * 60}deg)`;
+        slice.innerHTML = `<div style="position:absolute;transform:rotate(-${i * 60}deg);top:20%;left:105%;font-weight:bold;">₹${rewards[i]}</div>`;
+        wheel.appendChild(slice);
+      }
+    }
+
+    createWheel();
+
+    function spin() {
+      spinSound.play();
+
+      const rewardIndex = Math.floor(Math.random() * rewards.length);
+      const deg = 360 * 5 + (360 - rewardIndex * 60 - 30);
+      angle += deg;
+
+      wheel.style.transform = `rotate(${angle}deg)`;
+
+      setTimeout(() => {
+        const prize = rewards[rewardIndex];
+        document.getElementById("result").innerText = `🎉 You won ₹${prize}!`;
+
+        firebase.auth().onAuthStateChanged(user => {
+          if (user) {
+            const uid = user.uid;
+            const userRef = db.collection("users").doc(uid);
+
+            userRef.get().then(doc => {
+              if (doc.exists) {
+                const current = doc.data().balance || 0;
+                userRef.update({ balance: current + prize });
+
+                // Add transaction
+                db.collection("transactions").add({
+                  uid: uid,
+                  amount: prize,
+                  type: "credit",
+                  source: "spin",
+                  timestamp: Date.now()
+                });
+              }
+            });
+          }
+        });
+
+      }, 5000); // match spin time
+    }
+  </script>
+</body>
+</html>
